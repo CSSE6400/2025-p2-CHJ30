@@ -4,7 +4,7 @@
 GET {{baseUrl}}/api/v1/health
 
 ### List All Todos
-GET {{baseUrl}}/api/v1/todos?completed=true
+GET {{baseUrl}}/api/v1/todos?window=5
 
 ### Get a specific Todo
 GET {{baseUrl}}/api/v1/todos/1

@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from flask import Blueprint, jsonify, request
 from todo.models import db
 from todo.models.todo import Todo
-from datetime import datetime
+from datetime import datetime, timedelta
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
 
 TEST_ITEM = {
@@ -24,9 +24,29 @@ def health():
 @api.route('/todos', methods=['GET'])
 def get_todos():
     todos = Todo.query.all()
+    
+    paramsCompeleted  = request.args.get('completed', default = None)
+    if(paramsCompeleted):
+        paramsCompeleted = paramsCompeleted.lower() == 'true'
+    paramsWindow  = request.args.get('window', default = None, type = int)
+   
+    if(paramsWindow):
+        nowtime = (datetime.now() + timedelta(days=paramsWindow)).strftime("%Y-%m-%dT00:00:00")
+        print(nowtime)
+       
+
     result = []
     for todo in todos:
+
+        if(paramsCompeleted is not None and todo.completed != paramsCompeleted):
+            continue
+
+        if(paramsWindow is not None and todo.deadline_at and str(todo.deadline_at) > nowtime):
+            continue
+
         result.append(todo.to_dict())
+
+    
     return jsonify(result)
 
 @api.route('/todos/<int:todo_id>', methods=['GET'])
@@ -37,8 +57,16 @@ def get_todo(todo_id):
     return jsonify(todo.to_dict())
 
 @api.route('/todos', methods=['POST'])
-@api.route('/todos', methods=['POST'])
 def create_todo():
+    if request.json.get('title') is None:
+        return jsonify({'error': 'input title'}), 400
+    # extre field test
+    keys = request.json.keys()
+    for key in keys:
+        if(key not in TEST_ITEM.keys() ):
+            return jsonify({'error': 'extre field'}), 400
+    # if request.json.get('id') is None:
+    #     return jsonify({'error': 'input id'}), 400
     todo = Todo(
         title=request.json.get('title'),
         description=request.json.get('description'),
@@ -58,6 +86,14 @@ def update_todo(todo_id):
     todo = Todo.query.get(todo_id)
     if todo is None:
         return jsonify({'error': 'Todo not found'}), 404
+    if request.json.get('id') and todo_id !=request.json.get('id'):
+        return jsonify({'error': 'wrong id'}), 400
+    
+      # extre field test
+    keys = request.json.keys()
+    for key in keys:
+        if(key not in TEST_ITEM.keys() ):
+            return jsonify({'error': 'extre field'}), 400
     todo.title = request.json.get('title', todo.title)
     todo.description = request.json.get('description', todo.description)
     todo.completed = request.json.get('completed', todo.completed)
